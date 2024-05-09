@@ -18,22 +18,35 @@ public class Server {
     private static final Integer PORT = 9090;
     
     private static ArrayList<ClientHandler> clients = new ArrayList<>();
-    
+ 
+    private static ArrayList<Project> projects = new ArrayList<>();
     private static ArrayList<User> users = new ArrayList<User>();
-    
     private static Authenticator authenticator = new Authenticator(users);
 
     public static void main(String[] args) throws IOException{
         ServerSocket listener = new ServerSocket(PORT);
         
-        User user1 = new User("Yusuf", "12345");
-        User user2 = new User("Orhan", "abcdef");
-        users.add(user1);
-        users.add(user2);
+        Project project1 = new Project("Yusuf", "Sistem Programlama");
+        Project project2 = new Project("Yusuf", "Web Programlama");
+        
+        Project project3 = new Project("Orhan", "Veri Yapıları");
+        
+        User yusuf = new User("Yusuf", "12345");
+        User orhan = new User("Orhan", "qwerty");
+        users.add(yusuf);
+        users.add(orhan);
+        
+        yusuf.addProjectToUser(project1);
+        yusuf.addProjectToUser(project2);
+        orhan.addProjectToUser(project3);
+        
+        projects.add(project1);
+        projects.add(project2);
+        projects.add(project3);
         
         while (true) {            
             Socket client = listener.accept();
-            ClientHandler newClient = new ClientHandler(client, users, authenticator);
+            ClientHandler newClient = new ClientHandler(client, users, authenticator, projects);
             Thread clientThread = new Thread(newClient);
             clientThread.start();
         }

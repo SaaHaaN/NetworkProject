@@ -1,5 +1,6 @@
 package com.fsm.server;
 
+import com.fsm.client.gui.LoginPage;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
@@ -14,15 +15,19 @@ public class ClientHandler extends Thread{
     private PrintWriter out;
     private Boolean isAuthenticated = false;
     
+    private static ArrayList<Project> projects;
     private static ArrayList<User> users;
     private static Authenticator authenticator;
     
-    public ClientHandler(Socket socket, ArrayList<User> users, Authenticator authenticator) throws IOException{
+    private String username;
+    
+    public ClientHandler(Socket socket, ArrayList<User> users, Authenticator authenticator, ArrayList<Project> projects) throws IOException{
         this.client = socket;
         in = new BufferedReader(new InputStreamReader(client.getInputStream()));
         out = new PrintWriter(client.getOutputStream(), true);
         this.users = users;
         this.authenticator = authenticator;
+        this.projects = projects;
     }
     
     @Override
@@ -38,12 +43,17 @@ public class ClientHandler extends Thread{
                 
                 while(!isAuthenticated){
                     if(cmd.equals("LOGIN")){ // eğer LOGIN ise:
-                        Boolean canLogin = authenticator.checkIfUserCanLogin(username, password);
-                        if (canLogin) {
-                            out.println("Giriş yapabilirsin");
+                        String canLogin = authenticator.checkIfUserCanLogin(username, password);
+                        if (canLogin.equals("ok")) {
+                            this.username = username;
+                            isAuthenticated = true;
+                            out.println("ok");
+                        }
+                        else if(canLogin.equals("already-connected")){
+                            out.println("Kullanıcı zaten giriş yapmış.");
                         }
                         else{
-                            out.println("Giriş yapamazsın");
+                            out.println("Kullanıcı adı veya şifre yanlış!");
                         }
                         
                     }
@@ -58,8 +68,37 @@ public class ClientHandler extends Thread{
                         }
                     }
                 }
+                
+                while(true){
+                    req = in.readLine();
+                    
+                    parts = req.split("\\$");
+                    cmd = parts[0];
+                    
+                    if(req.startsWith("PROJECTS")){
+                        String response = "";
+                        
+                        for (Project project : this.projects) {
+                            if(project.creator.equals(this.username)){
+                                response += project.projectName + "*" + project.projectId + "$";
+                            }
+                        }
+                        
+                        out.println(response);
+                    }
+                    
+                    else if(req.startsWith("DISCONNECT")){
+                        for (User user : users) {
+                            if(this.username.equals(user.username)){
+                                user.setConnectedStatus(false);
+                            }
+                        } 
+                    }
+                    
+                }
             }
         } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 }

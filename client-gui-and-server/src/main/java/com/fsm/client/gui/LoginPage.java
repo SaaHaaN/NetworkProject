@@ -151,10 +151,19 @@ public class LoginPage extends javax.swing.JFrame {
             
             String serverResponse = input.readLine();
             
-            loginIndicatorLabel.setText(serverResponse);
+            if(serverResponse.equals("ok"))
+            {
+                MainPage mainPage = new MainPage();
+                mainPage.initialize(socket, input, out, usernameTxt);
+                mainPage.setVisible(true);
+                
+                this.dispose();
+            }
+            else{
+                loginIndicatorLabel.setText(serverResponse);
+            }
             
-            socket.close();
-            
+        
             
         } catch (IOException ex) {
             Logger.getLogger(LoginPage.class.getName()).log(Level.SEVERE, null, ex);

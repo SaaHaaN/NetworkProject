@@ -4,13 +4,14 @@
  */
 package com.fsm.server;
 
-/**
- *
- * @author Yakup
- */
+import java.util.ArrayList;
+
 public class User {
     public String username;
     public String password;
+    
+    public ArrayList<Project> projects = new ArrayList<>();
+    
     private Boolean isConnected = false;
     
     public User(String username, String password){
@@ -24,5 +25,9 @@ public class User {
     
     public void setConnectedStatus(Boolean value){
         this.isConnected = value;
+    }
+    
+    public void addProjectToUser(Project project){
+        this.projects.add(project);
     }
 }

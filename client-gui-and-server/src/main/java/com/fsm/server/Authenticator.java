@@ -14,20 +14,20 @@ public class Authenticator {
         this.users = users;
     }
     
-    public Boolean checkIfUserCanLogin(String username, String password){
+    public String checkIfUserCanLogin(String username, String password){
         
         for (User user : users) {
             
             if(user.username.equals(username) && user.password.equals(password)){
                 if(user.getConnectedStatus()){
-                    return false;
+                    return "already-connected";
                 }
                 user.setConnectedStatus(Boolean.TRUE);
-                return true;
+                return "ok";
             }
         }
         
-        return false;
+        return "pw-user-wrong";
     }
     
     public Boolean checkIfUserCanRegister(String username, String password){
