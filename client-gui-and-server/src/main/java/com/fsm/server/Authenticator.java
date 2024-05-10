@@ -6,11 +6,12 @@ package com.fsm.server;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 public class Authenticator {
-    private static ArrayList<User> users;
+    private static CopyOnWriteArrayList<User> users;
         
-    public Authenticator(ArrayList<User> users){
+    public Authenticator(CopyOnWriteArrayList<User> users){
         this.users = users;
     }
     
@@ -34,7 +35,7 @@ public class Authenticator {
         
         for (User user : users) {
             
-            if(user.username.equals(username) && user.password.equals(password)){
+            if(user.username.equals(username)){
                 return false;
             }
         }

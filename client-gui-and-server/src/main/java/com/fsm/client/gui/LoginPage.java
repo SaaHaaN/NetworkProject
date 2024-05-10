@@ -5,6 +5,8 @@
 package com.fsm.client.gui;
 
 import java.io.BufferedReader;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
@@ -142,19 +144,21 @@ public class LoginPage extends javax.swing.JFrame {
         try {
             Socket socket = new Socket("localhost", 9090);
             
-            BufferedReader input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+            DataInputStream in = new DataInputStream(socket.getInputStream());
+            DataOutputStream out = new DataOutputStream(socket.getOutputStream());
             
             String command = "LOGIN$" + usernameTxt + "$" + passwordTxt;
             
-            out.println(command);
+            out.write(command.getBytes());
             
-            String serverResponse = input.readLine();
+            byte[] messageByte = new byte[1024];
+            int bytesRead = in.read(messageByte); 
+            String serverResponse = new String(messageByte, 0, bytesRead);
             
             if(serverResponse.equals("ok"))
             {
                 MainPage mainPage = new MainPage();
-                mainPage.initialize(socket, input, out, usernameTxt);
+                mainPage.initialize(socket, in, out, usernameTxt);
                 mainPage.setVisible(true);
                 
                 this.dispose();

@@ -26,12 +26,26 @@ public class Project {
         this.connectedUsers = new ArrayList<>();
     }
     
+    public void setIdForTest(){
+        this.projectId = "A";
+    }
+    
     public void addConnectedUserToProject(String username){
         this.connectedUsers.add(username);
     }
     
     public void disconnectUserFromProject(String username){
         this.connectedUsers.remove(username);
+    }
+    
+    public String getConnectedUsers(){
+        String names = "";
+        
+        for(String usernames : connectedUsers){
+            names += usernames + ", ";
+        }
+        
+        return names.substring(0, names.length()-2);
     }
     
     private String generateRandomId(int n){

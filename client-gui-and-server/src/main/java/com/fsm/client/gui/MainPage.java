@@ -5,20 +5,48 @@
 package com.fsm.client.gui;
 
 import java.io.BufferedReader;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.nio.charset.Charset;
+import javax.swing.DefaultListModel;
+import javax.swing.ImageIcon;
 import javax.swing.JLabel;
+import javax.swing.JList;
+import javax.swing.ListModel;
 
 /**
  *
  * @author Yakup
  */
 public class MainPage extends javax.swing.JFrame {
+    
+    private void SendMessage(String msg){
+        try {
+            byte[] bytes = msg.getBytes();
+            this.out.write(bytes);  
+        } catch (IOException err) {
+            
+        }
+    }
+    
+    private String ReadMessage(){
+        try {
+            byte[] messageByte = new byte[1024];
+            int bytesRead = this.in.read(messageByte); 
+            return new String(messageByte, 0, bytesRead, Charset.forName("UTF-8")); 
+        } catch (IOException err) {
+            
+        }
+        
+        return "";
+    }
 
     private Socket client;
-    private BufferedReader bufferedReader;
-    private PrintWriter printWriter;
+    private DataInputStream in;
+    private DataOutputStream out;
     private String username;
     /**
      * Creates new form MainPage
@@ -27,10 +55,10 @@ public class MainPage extends javax.swing.JFrame {
         initComponents();
     }
     
-    public void initialize(Socket socket, BufferedReader br, PrintWriter pw, String username){
+    public void initialize(Socket socket, DataInputStream in, DataOutputStream out, String username){
         this.client = socket;
-        this.bufferedReader = br;
-        this.printWriter = pw;
+        this.in = in;
+        this.out = out;
         this.username = username;
         usernameLabel.setText("Kullanıcı: " + username);
         getProjectData();
@@ -38,36 +66,27 @@ public class MainPage extends javax.swing.JFrame {
     
     public void getProjectData(){
         try {
-            printWriter.println("PROJECTS$");
-            String serverResponse = bufferedReader.readLine();
+            SendMessage("PROJECTS$");
+            String serverResponse = ReadMessage();
+            
+            if(serverResponse.equals("")){
+                return;
+            }
+            
             System.out.println(serverResponse);
             String[] projectsSplitted = serverResponse.split("\\$");
             
-            int leftLabelX = 24, beginY = 83;
-            int labelLeftWidthSize = 140;
-            int labelHeight = 15;
-            
+            DefaultListModel<String> listModel = new DefaultListModel<>(); 
+           
             for (String singleProject : projectsSplitted) {
                 String[] partsAgain = singleProject.split("\\*"); 
-                JLabel nameLabel = new JLabel(partsAgain[0]);
-                JLabel keyLabel = new JLabel(partsAgain[1].substring(0, partsAgain[1].length()));
-                
-                nameLabel.setLocation(leftLabelX, beginY);
-                nameLabel.setSize(140, 15);
-                
-                keyLabel.setLocation(leftLabelX + labelLeftWidthSize + 5, beginY);
-                keyLabel.setSize(50, 15);
-                
-                beginY += 17;
-                
-                this.add(nameLabel);
-                this.add(keyLabel);
+                listModel.addElement(partsAgain[0]);
             }
             
+            projectsList.setModel(listModel);
+            
         } catch (Exception e) {
-        }
-        
-        
+        }   
     }
 
     /**
@@ -85,6 +104,8 @@ public class MainPage extends javax.swing.JFrame {
         createProjectBtn = new javax.swing.JButton();
         joinProjectBtn = new javax.swing.JButton();
         exitBtn = new javax.swing.JButton();
+        jScrollPane1 = new javax.swing.JScrollPane();
+        projectsList = new javax.swing.JList<>();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         addWindowListener(new java.awt.event.WindowAdapter() {
@@ -105,8 +126,18 @@ public class MainPage extends javax.swing.JFrame {
 
         createProjectBtn.setText("Proje Oluştur");
         createProjectBtn.setToolTipText("");
+        createProjectBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                createProjectBtnActionPerformed(evt);
+            }
+        });
 
         joinProjectBtn.setText("Projeye Gir");
+        joinProjectBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                joinProjectBtnActionPerformed(evt);
+            }
+        });
 
         exitBtn.setText("Çıkış YAP");
         exitBtn.setToolTipText("");
@@ -115,6 +146,8 @@ public class MainPage extends javax.swing.JFrame {
                 exitBtnActionPerformed(evt);
             }
         });
+
+        jScrollPane1.setViewportView(projectsList);
 
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
@@ -130,17 +163,20 @@ public class MainPage extends javax.swing.JFrame {
                     .addGroup(layout.createSequentialGroup()
                         .addComponent(myProjectsLabel)
                         .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 187, Short.MAX_VALUE)
+                        .addComponent(otherProjectsLabel)
+                        .addGap(76, 76, 76))
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                        .addGap(0, 0, Short.MAX_VALUE)
+                        .addComponent(exitBtn)
+                        .addContainerGap())
+                    .addGroup(layout.createSequentialGroup()
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                             .addGroup(layout.createSequentialGroup()
-                                .addComponent(otherProjectsLabel)
-                                .addGap(76, 76, 76))
-                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                                .addComponent(exitBtn)
-                                .addContainerGap())))
-                    .addGroup(layout.createSequentialGroup()
-                        .addComponent(createProjectBtn)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                        .addComponent(joinProjectBtn)
+                                .addGap(63, 63, 63)
+                                .addComponent(createProjectBtn)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(joinProjectBtn))
+                            .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 209, javax.swing.GroupLayout.PREFERRED_SIZE))
                         .addGap(0, 0, Short.MAX_VALUE))))
         );
         layout.setVerticalGroup(
@@ -152,12 +188,14 @@ public class MainPage extends javax.swing.JFrame {
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(myProjectsLabel)
                     .addComponent(otherProjectsLabel))
-                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 243, Short.MAX_VALUE)
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 212, Short.MAX_VALUE)
+                .addGap(18, 18, 18)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(createProjectBtn)
                     .addComponent(joinProjectBtn)
                     .addComponent(exitBtn))
-                .addGap(20, 20, 20))
+                .addGap(27, 27, 27))
         );
 
         usernameLabel.getAccessibleContext().setAccessibleName("usernameLabel");
@@ -173,14 +211,13 @@ public class MainPage extends javax.swing.JFrame {
 
     private void DisconnectUser(){
         try {
-            printWriter.println("DISCONNECT$");
+            SendMessage("EXIT$");
             
             this.client.close();
-            this.bufferedReader.close();
-            this.printWriter.close();
+            this.in.close();
+            this.out.close();
             
-        } catch(Exception err){
-            err.printStackTrace();
+        } catch(IOException err){
         }
     }
     
@@ -194,6 +231,26 @@ public class MainPage extends javax.swing.JFrame {
     private void formWindowClosing(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosing
         DisconnectUser();
     }//GEN-LAST:event_formWindowClosing
+
+    private void joinProjectBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_joinProjectBtnActionPerformed
+        SendMessage("CONNECT$" + username + "$A");
+        String res = ReadMessage();
+        
+        String[] parts = res.split("\\$");
+        
+        String key = parts[1];
+        
+        ProjectPage projectPage = new ProjectPage();
+        projectPage.initialize(key, client, in, out);
+        projectPage.setVisible(true);
+    }//GEN-LAST:event_joinProjectBtnActionPerformed
+
+    private void createProjectBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_createProjectBtnActionPerformed
+        CreateProjectPage createProjectPage = new CreateProjectPage();
+        createProjectPage.initialize(this, client, in, out, username);
+        createProjectPage.setVisible(true);
+        createProjectPage.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
+    }//GEN-LAST:event_createProjectBtnActionPerformed
 
     /**
      * @param args the command line arguments
@@ -233,9 +290,11 @@ public class MainPage extends javax.swing.JFrame {
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JButton createProjectBtn;
     private javax.swing.JButton exitBtn;
+    private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JButton joinProjectBtn;
     private javax.swing.JLabel myProjectsLabel;
     private javax.swing.JLabel otherProjectsLabel;
+    private javax.swing.JList<String> projectsList;
     private javax.swing.JLabel usernameLabel;
     // End of variables declaration//GEN-END:variables
 }

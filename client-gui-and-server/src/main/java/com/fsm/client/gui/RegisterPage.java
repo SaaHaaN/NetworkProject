@@ -5,10 +5,13 @@
 package com.fsm.client.gui;
 
 import java.io.BufferedReader;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.nio.charset.Charset;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -142,17 +145,19 @@ public class RegisterPage extends javax.swing.JFrame {
         try {
             Socket socket = new Socket("localhost", 9090);
             
-            BufferedReader input = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-            PrintWriter out = new PrintWriter(socket.getOutputStream(), true);
+            DataInputStream in = new DataInputStream(socket.getInputStream());
+            DataOutputStream out = new DataOutputStream(socket.getOutputStream());
             
             String command = "REGISTER$" + usernameTxt + "$" + passwordTxt;
             
-            out.println(command);
+            out.write(command.getBytes());
             
-            String serverResponse = input.readLine();
+            byte[] messageByte = new byte[1024];
+            int bytesRead = in.read(messageByte); 
             
+            String serverResponse = new String(messageByte, 0, bytesRead, Charset.forName("UTF-8"));
+                        
             registerIndicatorLabel.setText(serverResponse);
-            
             socket.close();
             
             
