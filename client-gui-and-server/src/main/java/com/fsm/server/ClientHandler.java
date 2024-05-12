@@ -1,14 +1,20 @@
 package com.fsm.server;
 
+import com.fsm.client.gui.Communication;
 import com.mysql.cj.conf.PropertyKey;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.Socket;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class ClientHandler extends Thread{
     
@@ -35,7 +41,7 @@ public class ClientHandler extends Thread{
         clientHandlers.add(this);
     }
     
-    private String ReturnAuthoredProjects(){
+    private String getProjectsCreatedByUser(){
         String response = "";
         
         for (Project project : this.projects) {
@@ -45,15 +51,6 @@ public class ClientHandler extends Thread{
         }
         
         return response;
-    }
-    
-    private void SendMessage(String msg){
-        try {
-            byte[] bytes = msg.getBytes(StandardCharsets.UTF_8);
-            this.out.write(bytes);  
-        } catch (IOException err) {
-            
-        }
     }
     
     private Project FindProjectById(String id){
@@ -68,45 +65,39 @@ public class ClientHandler extends Thread{
         
         return tmp;
     }
-        
-    private String ReadMessage(){
-        try {
-            byte[] messageByte = new byte[1024];
-            int bytesRead = in.read(messageByte); 
-            return new String(messageByte, 0, bytesRead, Charset.forName("UTF-8")); 
-        } catch (IOException err) {
-            return "";
-        } catch (StringIndexOutOfBoundsException excp){
-            return "";
-        }
-    }
     
     @Override
     public void run(){
         try {
-            while (true) {        
-                String req = ReadMessage();
-                
-                String[] parts = req.split("\\$");
-                String cmd = parts[0];
-                String username = parts[1];
-                String password = parts[2];
+            while (!client.isClosed()) {        
                 
                 while(!isAuthenticated){
+                    
+                    String req = Communication.ReadMessage(in);
+                    
+                    if(req.equals(""))
+                    {
+                        continue;
+                    }
+
+                    String[] parts = req.split("\\$");
+                    String cmd = parts[0];
+                    String username = parts[1];
+                    String password = parts[2];
                     
                     if(cmd.equals("LOGIN")){ // eğer LOGIN ise:
                         String canLogin = authenticator.checkIfUserCanLogin(username, password);
                         if (canLogin.equals("ok")) {
                             this.username = username;
                             isAuthenticated = true;
-                            SendMessage("ok");
+                            Communication.SendMessage("ok", out);
                         }
                         
                         else if(canLogin.equals("already-connected")){
-                            SendMessage("Kullanıcı zaten giriş yapmış.");
+                            Communication.SendMessage("Kullanıcı zaten giriş yapmış.", out);
                         }
                         else{
-                            SendMessage("Kullanıcı adı veya şifre yanlış!");
+                            Communication.SendMessage("Kullanıcı adı veya şifre yanlış!", out);
                         }
                         
                     }
@@ -114,26 +105,30 @@ public class ClientHandler extends Thread{
                     else if(cmd.equals("REGISTER")){ // eğer REGISTER ise:
                         Boolean canRegister = authenticator.checkIfUserCanRegister(username, password);
                         if (canRegister) {
-                            SendMessage("Kaydedildin!");
+                            authenticator.RegisterUser(username, password);
+                            Communication.SendMessage("Kaydedildin!", out);
                         }
                         else{
-                            SendMessage("Kullanıcı adı alınmış.");
+                            Communication.SendMessage("Kullanıcı adı alınmış.", out);
                         }
                     }
                 }
                 
-                while(true){
-                    String reqAfterLogin = ReadMessage();
+                while(!client.isClosed()){
+                    String req = Communication.ReadMessage(in);
+
+                    String[] parts = req.split("\\$");
+                    String cmd = parts[0];
                     
-                    if(reqAfterLogin == null){
+                    if(req == null){
                         continue;
                     }
                     
-                    parts = reqAfterLogin.split("\\$");
+                    parts = req.split("\\$");
                     cmd = parts[0];
                     
                     if(cmd.equals("PROJECTS")){
-                        SendMessage(ReturnAuthoredProjects());
+                        Communication.SendMessage(getProjectsCreatedByUser(), out);
                     }
                     
                     else if(cmd.equals("CREATE")){
@@ -167,16 +162,49 @@ public class ClientHandler extends Thread{
                             continue;
                         }
                         
-                        SendMessage("USERS$" + project.getConnectedUsers());
+                        String messageToSend = "USERS$" + project.getConnectedUsers();
+                        Communication.SendMessage(messageToSend, out);
                     }
                     
                     else if(cmd.equals("GENERAL")){
-                        //GENERAL$PROJECTKEY$MESSAGE
+                        //GENERAL$PROJECTKEY$MESSAGE$MESSAGE_DATA
+                        
+                        //GENERAL$PROJECTKEY$FILE${DOSYA ADI VE UZANTISI}
                         
                         String key = parts[1];
-                        String message = parts[2];
+                        String type = parts[2];
                         
-                        BroadcastToProjectMembers(key, message, this.username);
+                        if(type.equals("MESSAGE")){
+                            String message = parts[3];
+                            BroadcastToProjectMembers(key, message, this.username);
+                        }
+                        else if(type.equals("FILE")){
+                            String fileProperties = parts[3];
+                            
+                            FileOutputStream fout = new FileOutputStream("sunucuya_gelen_dosyalar\\" + fileProperties);
+                            
+                            byte[] buffer = new byte[1024];
+                            int bytesRead;
+                            
+                            while((bytesRead = in.read(buffer)) != 1){
+                                fout.write(buffer, 0, bytesRead);
+                                System.out.println(bytesRead);
+                            }
+                            
+                            fout.close();
+                            
+                            BroadcastFileToProjectMembers(key, fileProperties, this.username);
+                        }
+                        
+                        
+                    }
+                    
+                    else if(cmd.equals("DISCONNECT")){
+                        // DISCONNECT$PROJECTID
+                        
+                        String projectKey = parts[1];
+                        
+                        DisconnectUserFromProject(projectKey);
                     }
                     
                     else if(cmd.equals("EXIT")){
@@ -185,24 +213,59 @@ public class ClientHandler extends Thread{
                                 user.setConnectedStatus(false);
                             }
                         }
+                        CloseEverything();
                     }
                     
                 }
             }
         } catch (Exception e) {
+            CloseEverything();
+        }
+    }
+    
+    private void RemoveClientHandler(){
+        clientHandlers.remove(this);
+    }
+    
+    private void CloseEverything(){
+        RemoveClientHandler();
+        try{
+            
+            if(in != null){
+                in.close();
+            }
+            
+            if(out != null){
+                out.close();
+            }
+            
+            if(client != null){
+                client.close();
+            }
+            
+        }catch(IOException e){
             e.printStackTrace();
         }
     }
     
-    private void SendProjectKey(Project project){
-        if(this.username.equals(project.creator)){
-            SendMessage("KEY$"+project.projectId);
+    private void DisconnectUserFromProject(String key){
+        for(Project project : projects){
+            if(project.projectId.equals(key)){
+                project.connectedUsers.remove(username);
+            }
         }
-        else{
-            SendMessage("KEY$"+"<Proje sahibi olmadığınız için Key'i göremezsiniz.>");
-        }
+        
+        BroadcastConnectedUsers(FindProjectById(key));
     }
     
+    private void SendProjectKey(Project project){
+        if(this.username.equals(project.creator)){
+            Communication.SendMessage("KEY$"+project.projectId, out);
+        }
+        else{
+            Communication.SendMessage("KEY$"+"<Proje sahibi olmadığınız için Key'i göremezsiniz.>", out);
+        }
+    }
     
     private void BroadcastConnectedUsers(Project project){
         // Bütün client handlerlar arasında:
@@ -210,8 +273,11 @@ public class ClientHandler extends Thread{
             
             // Projeye bağlanmış kullanıcıları bul
             for(String connectedUser : project.connectedUsers){
-                if(handler.username.equals(connectedUser)){
-                    handler.SendMessage("USERS$" + project.getConnectedUsers());
+                if(handler.username == null){
+                    continue;
+                }
+                else if(handler.username.equals(connectedUser)){
+                    Communication.SendMessage("USERS$" + project.getConnectedUsers(), handler.out);
                 }
             }
 
@@ -226,7 +292,44 @@ public class ClientHandler extends Thread{
             // Projeye bağlanmış kullanıcıları bul
             for(String connectedUser : project.connectedUsers){
                 if(handler.username.equals(connectedUser)){
-                    handler.SendMessage("GENERAL$" + user + ": " + msg);
+                    Communication.SendMessage("GENERAL$" + user + ": " + msg, handler.out);
+                }
+            }
+
+        }
+    }
+    
+    private void BroadcastFileToProjectMembers(String key, String fileProperties, String user) throws IOException{
+        Project project = FindProjectById(key);
+        
+        for(ClientHandler handler: clientHandlers){
+            
+            // Projeye bağlanmış kullanıcıları bul
+            for(String connectedUser : project.connectedUsers){
+                if(handler.username.equals(connectedUser) && !handler.username.equals(this.username)){
+                    
+                    FileInputStream fin = null;
+                    try {
+                        
+                        Communication.SendMessage("GENERAL$FILE$" + fileProperties, out);
+                        
+                        fin = new FileInputStream("sunucuya_gelen_dosyalar\\" + fileProperties);
+                        
+                        byte[] buffer = new byte[1024];
+                        int bytesRead;
+                        while((bytesRead = fin.read(buffer)) != 1){
+                            handler.out.write(buffer, 0, bytesRead);
+                        }
+                        
+                    } catch (FileNotFoundException ex) {
+                        Logger.getLogger(ClientHandler.class.getName()).log(Level.SEVERE, null, ex);
+                    } finally {
+                        try {
+                            fin.close();
+                        } catch (IOException ex) {
+                            Logger.getLogger(ClientHandler.class.getName()).log(Level.SEVERE, null, ex);
+                        }
+                    }
                 }
             }
 

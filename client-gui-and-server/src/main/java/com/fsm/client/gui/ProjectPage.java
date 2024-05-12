@@ -6,21 +6,30 @@ package com.fsm.client.gui;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.net.Socket;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
-import java.util.Locale;
+import java.nio.file.Files;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import javax.swing.DefaultListModel;
+import javax.swing.JDialog;
+import javax.swing.JFileChooser;
 
 
 public class ProjectPage extends javax.swing.JFrame{
 
-    private Socket client;
     private DataInputStream in;
     private DataOutputStream out;
     private String key;
     private DefaultListModel<String> model = new DefaultListModel<>();
+    private String username;
+    
+    private volatile boolean isActive = true;
     
     /**
      * Creates new form ProjectPage
@@ -29,22 +38,24 @@ public class ProjectPage extends javax.swing.JFrame{
         initComponents();
     }
     
-    public void initialize(String key, Socket socket, DataInputStream dis, DataOutputStream dos){
-        this.client = socket;
+    public void initialize(String key, String username, DataInputStream dis, DataOutputStream dos){
         this.in = dis;
         this.out = dos;
         this.key = "A";
+        this.username = username;
         this.projectKeyLabel.setText(key);
-        ListenForMessage();
         generalList.setModel(model);
+        ListenForMessage();
+        this.setDefaultCloseOperation(DISPOSE_ON_CLOSE);
     }
     
     public void ListenForMessage(){
         new Thread(new Runnable() {
             @Override
             public void run() {
-                while(true){
-                    String response = ReadMessage();
+                try {
+                    while(isActive){
+                    String response = Communication.ReadMessage(in);
                     
                     String[] parts = response.split("\\$");
                     String command = parts[0];
@@ -55,35 +66,43 @@ public class ProjectPage extends javax.swing.JFrame{
                     }
                     
                     if(command.equals("GENERAL")){
-                        String msg = parts[1];
                         
-                        model.add(model.getSize(), msg);
+                        // Genel Mesajlaşma için:
+                        //GENERAL$MESSAGE${MESSAGE DATA}
+                        
+                        String type = parts[1];
+                        
+                        if(type.equals("MESSAGE")){
+                            String message = parts[2];
+                            model.add(model.getSize(), message);
+                        }
+                        
+                        // Dosya indirmek için:
+                        // GENERAL$FILE{DOSYA ADI VE EKLENTİSİ}
+                        // Sonra da DATA gelecek;
+                        
+                        else if(type.equals("FILE")){
+                            String fileNameAndExtension = parts[2];
+                            
+                            FileOutputStream fout = new FileOutputStream(fileNameAndExtension);
+                            
+                            byte[] buffer = new byte[1024];
+                            int bytesRead;
+                            while((bytesRead = in.read(buffer)) != 1){
+                                fout.write(buffer);
+                            }
+                            
+                            fout.close();
+                        }
+   
                     }
                     
                 }
+                } catch (Exception e) {
+                }
             }
         }).start();
-    }
-    
-    private void SendMessage(String msg){
-        try {
-            byte[] bytes = msg.getBytes(StandardCharsets.UTF_8);
-            this.out.write(bytes);  
-        } catch (IOException err) {
-            
-        }
-    }
-    
-    private String ReadMessage(){
-        try {
-            byte[] messageByte = new byte[1024];
-            int bytesRead = in.read(messageByte); 
-            return new String(messageByte, 0, bytesRead, Charset.forName("UTF-8")); 
-        } catch (IOException | StringIndexOutOfBoundsException err) {
-            return "";
-        }
-    }
-
+    }    
     /**
      * This method is called from within the constructor to initialize the form.
      * WARNING: Do NOT modify this code. The content of this method is always
@@ -102,8 +121,15 @@ public class ProjectPage extends javax.swing.JFrame{
         generalList = new javax.swing.JList<>();
         generalMessageFieldTxt = new javax.swing.JTextField();
         generalSendMessageBtn = new javax.swing.JButton();
+        disconnectBtn = new javax.swing.JButton();
+        chooseFileButton = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
+        addWindowListener(new java.awt.event.WindowAdapter() {
+            public void windowClosing(java.awt.event.WindowEvent evt) {
+                formWindowClosing(evt);
+            }
+        });
 
         projectKeyIndicatorLabel.setFont(new java.awt.Font("Dialog", 0, 13)); // NOI18N
         projectKeyIndicatorLabel.setText("Proje Anahtarı:");
@@ -129,6 +155,20 @@ public class ProjectPage extends javax.swing.JFrame{
             }
         });
 
+        disconnectBtn.setText("Projeden ÇIK");
+        disconnectBtn.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                disconnectBtnActionPerformed(evt);
+            }
+        });
+
+        chooseFileButton.setText("Dosya SEÇ");
+        chooseFileButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                chooseFileButtonActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
@@ -147,13 +187,21 @@ public class ProjectPage extends javax.swing.JFrame{
                                 .addGap(9, 9, 9)
                                 .addComponent(activeUsersLabel))
                             .addComponent(jLabel1, javax.swing.GroupLayout.PREFERRED_SIZE, 259, javax.swing.GroupLayout.PREFERRED_SIZE)
-                            .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING, false)
-                                .addComponent(generalMessageFieldTxt, javax.swing.GroupLayout.Alignment.LEADING)
-                                .addComponent(jScrollPane1, javax.swing.GroupLayout.Alignment.LEADING, javax.swing.GroupLayout.DEFAULT_SIZE, 239, Short.MAX_VALUE))))
-                    .addGroup(layout.createSequentialGroup()
-                        .addGap(59, 59, 59)
-                        .addComponent(generalSendMessageBtn)))
-                .addContainerGap(190, Short.MAX_VALUE))
+                            .addGroup(layout.createSequentialGroup()
+                                .addComponent(generalSendMessageBtn)
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
+                                .addComponent(chooseFileButton, javax.swing.GroupLayout.PREFERRED_SIZE, 106, javax.swing.GroupLayout.PREFERRED_SIZE)))
+                        .addGap(0, 0, Short.MAX_VALUE))
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                        .addGap(0, 0, Short.MAX_VALUE)
+                        .addComponent(disconnectBtn)))
+                .addContainerGap())
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                .addContainerGap()
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                    .addComponent(generalMessageFieldTxt)
+                    .addComponent(jScrollPane1))
+                .addGap(229, 229, 229))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -173,18 +221,70 @@ public class ProjectPage extends javax.swing.JFrame{
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
                 .addComponent(generalMessageFieldTxt, javax.swing.GroupLayout.PREFERRED_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.PREFERRED_SIZE)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(generalSendMessageBtn)
-                .addContainerGap(67, Short.MAX_VALUE))
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
+                    .addComponent(generalSendMessageBtn)
+                    .addComponent(chooseFileButton))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 51, Short.MAX_VALUE)
+                .addComponent(disconnectBtn)
+                .addContainerGap())
         );
 
         pack();
     }// </editor-fold>//GEN-END:initComponents
 
     private void generalSendMessageBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_generalSendMessageBtnActionPerformed
-        SendMessage("GENERAL$" + "A$" + generalMessageFieldTxt.getText());
+        String messageToSend = "GENERAL$" + "A$" + generalMessageFieldTxt.getText(); // TO DO: Değişecek
+        
+        Communication.SendMessage(messageToSend, out);
         
         generalMessageFieldTxt.setText("");
     }//GEN-LAST:event_generalSendMessageBtnActionPerformed
+
+    private void disconnectBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_disconnectBtnActionPerformed
+        String messageToSend = "DISCONNECT$A";
+        Communication.SendMessage(messageToSend, out);
+        this.isActive = false;
+        this.dispose();
+    }//GEN-LAST:event_disconnectBtnActionPerformed
+
+    private void formWindowClosing(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosing
+        String messageToSend = "DISCONNECT$A";
+        Communication.SendMessage(messageToSend, out);
+        this.isActive = false;
+    }//GEN-LAST:event_formWindowClosing
+
+    private void chooseFileButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_chooseFileButtonActionPerformed
+        JFileChooser fileChooser = new JFileChooser();
+        
+        int returnValue = fileChooser.showOpenDialog(null);
+        
+        if (returnValue == JFileChooser.APPROVE_OPTION) {
+            FileInputStream fin = null;
+            try {
+                File selectedFile = fileChooser.getSelectedFile();
+                
+                String fileName = selectedFile.getName();
+                
+                Communication.SendMessage("GENERAL$A$FILE$" + fileName, out);
+                
+                fin = new FileInputStream(selectedFile);
+                
+                byte[] buffer = Files.readAllBytes(selectedFile.toPath());
+                
+                out.write(buffer);
+                
+            }catch (FileNotFoundException ex) {
+            } catch (IOException ex) {
+            }
+            
+            
+            try {
+                fin.close();
+            } catch (Exception e) {
+            }
+            
+        }
+    }//GEN-LAST:event_chooseFileButtonActionPerformed
 
     /**
      * @param args the command line arguments
@@ -223,6 +323,8 @@ public class ProjectPage extends javax.swing.JFrame{
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JLabel activeUsersLabel;
+    private javax.swing.JButton chooseFileButton;
+    private javax.swing.JButton disconnectBtn;
     private javax.swing.JList<String> generalList;
     private javax.swing.JTextField generalMessageFieldTxt;
     private javax.swing.JButton generalSendMessageBtn;

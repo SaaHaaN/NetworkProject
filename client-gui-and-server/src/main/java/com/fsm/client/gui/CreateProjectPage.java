@@ -17,27 +17,6 @@ import java.util.concurrent.TimeUnit;
  * @author Yakup
  */
 public class CreateProjectPage extends javax.swing.JFrame {
-
-    private void SendMessage(String msg){
-        try {
-            byte[] bytes = msg.getBytes();
-            this.out.write(bytes);  
-        } catch (IOException err) {
-            
-        }
-    }
-    
-    private String ReadMessage(){
-        try {
-            byte[] messageByte = new byte[1024];
-            int bytesRead = in.read(messageByte); 
-            return new String(messageByte, 0, bytesRead); 
-        } catch (IOException err) {
-            
-        }
-        
-        return "";
-    }
     
     private Socket client;
     private DataInputStream in;
@@ -129,7 +108,9 @@ public class CreateProjectPage extends javax.swing.JFrame {
         try {
             String command = "CREATE$" + username + "$" + projectName;
             
-            SendMessage(command);
+            Communication.SendMessage(command, out);
+            
+            mainPage.getProjectData();
         } catch (Exception e) {
         }
     }//GEN-LAST:event_createProjectBtnActionPerformed

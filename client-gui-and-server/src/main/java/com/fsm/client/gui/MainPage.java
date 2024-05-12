@@ -11,6 +11,7 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import javax.swing.DefaultListModel;
 import javax.swing.ImageIcon;
 import javax.swing.JLabel;
@@ -22,28 +23,6 @@ import javax.swing.ListModel;
  * @author Yakup
  */
 public class MainPage extends javax.swing.JFrame {
-    
-    private void SendMessage(String msg){
-        try {
-            byte[] bytes = msg.getBytes();
-            this.out.write(bytes);  
-        } catch (IOException err) {
-            
-        }
-    }
-    
-    private String ReadMessage(){
-        try {
-            byte[] messageByte = new byte[1024];
-            int bytesRead = this.in.read(messageByte); 
-            return new String(messageByte, 0, bytesRead, Charset.forName("UTF-8")); 
-        } catch (IOException err) {
-            
-        }
-        
-        return "";
-    }
-
     private Socket client;
     private DataInputStream in;
     private DataOutputStream out;
@@ -66,8 +45,8 @@ public class MainPage extends javax.swing.JFrame {
     
     public void getProjectData(){
         try {
-            SendMessage("PROJECTS$");
-            String serverResponse = ReadMessage();
+            Communication.SendMessage("PROJECTS$", out);
+            String serverResponse = Communication.ReadMessage(in);
             
             if(serverResponse.equals("")){
                 return;
@@ -211,11 +190,19 @@ public class MainPage extends javax.swing.JFrame {
 
     private void DisconnectUser(){
         try {
-            SendMessage("EXIT$");
+            Communication.SendMessage("EXIT$", out);
             
-            this.client.close();
-            this.in.close();
-            this.out.close();
+            if(in != null){
+                in.close();
+            }
+            
+            if(out != null){
+                out.close();
+            }
+            
+            if(client != null){
+                client.close();
+            }
             
         } catch(IOException err){
         }
@@ -233,15 +220,16 @@ public class MainPage extends javax.swing.JFrame {
     }//GEN-LAST:event_formWindowClosing
 
     private void joinProjectBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_joinProjectBtnActionPerformed
-        SendMessage("CONNECT$" + username + "$A");
-        String res = ReadMessage();
+        String messageToSend = "CONNECT$" + username + "$A"; // TO DO: Değişecek
+        Communication.SendMessage(messageToSend, out);
+        String res = Communication.ReadMessage(in);
         
         String[] parts = res.split("\\$");
         
         String key = parts[1];
         
         ProjectPage projectPage = new ProjectPage();
-        projectPage.initialize(key, client, in, out);
+        projectPage.initialize(key, username, in, out);
         projectPage.setVisible(true);
     }//GEN-LAST:event_joinProjectBtnActionPerformed
 

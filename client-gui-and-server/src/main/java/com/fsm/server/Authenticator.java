@@ -40,9 +40,11 @@ public class Authenticator {
             }
         }
         
-        User newUser = new User(username, password);
-        users.add(newUser);
-        
         return true;
+    }
+    
+    public void RegisterUser(String username, String password){
+        User created = new User(username, password);
+        users.add(created);
     }
 }

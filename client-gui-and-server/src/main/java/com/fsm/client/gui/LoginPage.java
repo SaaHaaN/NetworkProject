@@ -11,6 +11,8 @@ import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
+import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -149,11 +151,12 @@ public class LoginPage extends javax.swing.JFrame {
             
             String command = "LOGIN$" + usernameTxt + "$" + passwordTxt;
             
-            out.write(command.getBytes());
+            out.write(command.getBytes(StandardCharsets.UTF_8));
+            out.flush();
             
             byte[] messageByte = new byte[1024];
             int bytesRead = in.read(messageByte); 
-            String serverResponse = new String(messageByte, 0, bytesRead);
+            String serverResponse = new String(messageByte, 0, bytesRead, Charset.forName("UTF-8"));
             
             if(serverResponse.equals("ok"))
             {
@@ -165,6 +168,7 @@ public class LoginPage extends javax.swing.JFrame {
             }
             else{
                 loginIndicatorLabel.setText(serverResponse);
+                socket.close();
             }
             
         

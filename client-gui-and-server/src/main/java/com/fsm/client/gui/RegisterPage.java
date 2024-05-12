@@ -12,6 +12,7 @@ import java.io.InputStreamReader;
 import java.io.PrintWriter;
 import java.net.Socket;
 import java.nio.charset.Charset;
+import java.nio.charset.StandardCharsets;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -150,16 +151,14 @@ public class RegisterPage extends javax.swing.JFrame {
             
             String command = "REGISTER$" + usernameTxt + "$" + passwordTxt;
             
-            out.write(command.getBytes());
+            out.write(command.getBytes(StandardCharsets.UTF_8));
+            out.flush();
             
             byte[] messageByte = new byte[1024];
-            int bytesRead = in.read(messageByte); 
-            
+            int bytesRead = in.read(messageByte);
             String serverResponse = new String(messageByte, 0, bytesRead, Charset.forName("UTF-8"));
                         
             registerIndicatorLabel.setText(serverResponse);
-            socket.close();
-            
             
         } catch (IOException ex) {
             Logger.getLogger(LoginPage.class.getName()).log(Level.SEVERE, null, ex);
