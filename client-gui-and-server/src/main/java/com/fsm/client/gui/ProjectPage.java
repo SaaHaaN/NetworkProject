@@ -1,23 +1,10 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JFrame.java to edit this template
- */
 package com.fsm.client.gui;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.OutputStream;
-import java.net.Socket;
-import java.nio.file.Files;
-import java.util.logging.Level;
-import java.util.logging.Logger;
 import javax.swing.DefaultListModel;
-import javax.swing.JDialog;
 import javax.swing.JFileChooser;
 
 
@@ -82,17 +69,9 @@ public class ProjectPage extends javax.swing.JFrame{
                         // Sonra da DATA gelecek;
                         
                         else if(type.equals("FILE")){
-                            String fileNameAndExtension = parts[2];
+                            String fileName = parts[2];
                             
-                            FileOutputStream fout = new FileOutputStream(fileNameAndExtension);
-                            
-                            byte[] buffer = new byte[1024];
-                            int bytesRead;
-                            while((bytesRead = in.read(buffer)) != 1){
-                                fout.write(buffer);
-                            }
-                            
-                            fout.close();
+                            Communication.ReceiveFile(fileName, in);
                         }
    
                     }
@@ -252,7 +231,7 @@ public class ProjectPage extends javax.swing.JFrame{
         Communication.SendMessage(messageToSend, out);
         this.isActive = false;
     }//GEN-LAST:event_formWindowClosing
-
+    
     private void chooseFileButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_chooseFileButtonActionPerformed
         JFileChooser fileChooser = new JFileChooser();
         
@@ -265,24 +244,14 @@ public class ProjectPage extends javax.swing.JFrame{
                 
                 String fileName = selectedFile.getName();
                 
+                // Sunucuya dosyanın adını gönderiyorum arkaplanda halletmesi için.
                 Communication.SendMessage("GENERAL$A$FILE$" + fileName, out);
-                
-                fin = new FileInputStream(selectedFile);
-                
-                byte[] buffer = Files.readAllBytes(selectedFile.toPath());
-                
-                out.write(buffer);
-                
-            }catch (FileNotFoundException ex) {
-            } catch (IOException ex) {
+
+                Communication.SendFile(selectedFile, out);
             }
-            
-            
-            try {
-                fin.close();
-            } catch (Exception e) {
+            catch(Exception e){
+                
             }
-            
         }
     }//GEN-LAST:event_chooseFileButtonActionPerformed
 

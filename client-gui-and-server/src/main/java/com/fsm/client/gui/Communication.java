@@ -2,6 +2,9 @@ package com.fsm.client.gui;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
@@ -42,6 +45,44 @@ public class Communication {
         // Eğer bir hata oluştuysa boş bir String döndürüyorum
         // ve gelecekte onu kontrol ettiğim yerler oluyor.
         return "";
+    }
+    
+    public static void SendFile(File fileToSend, DataOutputStream out) throws Exception {
+        int bytes = 0;
+        
+        FileInputStream fis = new FileInputStream(fileToSend);
+ 
+        out.writeLong(fileToSend.length());
+        
+        byte[] buffer = new byte[1024];
+        while ((bytes = fis.read(buffer))
+               != -1) {
+            
+          out.write(buffer, 0, bytes);
+            out.flush();
+        }
+        
+        fis.close();
+    }
+    
+    public static void ReceiveFile(String fileName, DataInputStream in)throws Exception{
+        int bytes = 0;
+        
+        FileOutputStream fos = new FileOutputStream(fileName);
+        
+        long size = in.readLong();
+        
+        byte[] buffer = new byte[1024];
+        
+        while( size > 0 && 
+                (bytes = in.read(buffer, 0, (int)Math.min(buffer.length, size))) != 1)
+        {
+            fos.write(buffer, 0, bytes);
+            size -= bytes;
+        }
+        
+        fos.flush();
+        fos.close();
     }
     
 }

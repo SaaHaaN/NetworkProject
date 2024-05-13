@@ -4,14 +4,9 @@
 
 package com.fsm.server;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.Date;
 import java.util.concurrent.CopyOnWriteArrayList;
 
 public class Server {
@@ -27,7 +22,7 @@ public class Server {
         ServerSocket listener = new ServerSocket(PORT);
         
         Project project1 = new Project("Yusuf", "Sistem Programlama");
-        Project project2 = new Project("Yusuf", "Veri Yapıları");
+        Project project2 = new Project("Yusuf", "Web Programlama");
         
         Project project3 = new Project("Orhan", "Veri Yapıları");
         

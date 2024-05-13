@@ -1,17 +1,12 @@
 package com.fsm.server;
 
 import com.fsm.client.gui.Communication;
-import com.mysql.cj.conf.PropertyKey;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
-import java.io.FileInputStream;
+import java.io.File;
 import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.net.Socket;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -179,21 +174,20 @@ public class ClientHandler extends Thread{
                             BroadcastToProjectMembers(key, message, this.username);
                         }
                         else if(type.equals("FILE")){
-                            String fileProperties = parts[3];
+                            String fileName = parts[3];
                             
-                            FileOutputStream fout = new FileOutputStream("sunucuya_gelen_dosyalar\\" + fileProperties);
+                            Communication.ReceiveFile("sunucuya_gelen_dosyalar\\" + fileName, this.in);
                             
-                            byte[] buffer = new byte[1024];
-                            int bytesRead;
+                            String report = String.format("********\n"
+                                    + "Sunucuya dosya geldi!\n"
+                                    + "Proje Anahtarı: %s\n"
+                                    + "Gönderen: %s\n"
+                                    + "Kaydedilen konum: sunucuya_gelen_dosyalar/%s", 
+                                key, this.username, fileName);
+        
+                            System.out.println(report);
                             
-                            while((bytesRead = in.read(buffer)) != 1){
-                                fout.write(buffer, 0, bytesRead);
-                                System.out.println(bytesRead);
-                            }
-                            
-                            fout.close();
-                            
-                            BroadcastFileToProjectMembers(key, fileProperties, this.username);
+                            BroadcastFileToProjectMembers(key, fileName);
                         }
                         
                         
@@ -222,6 +216,8 @@ public class ClientHandler extends Thread{
             CloseEverything();
         }
     }
+    
+    
     
     private void RemoveClientHandler(){
         clientHandlers.remove(this);
@@ -299,40 +295,30 @@ public class ClientHandler extends Thread{
         }
     }
     
-    private void BroadcastFileToProjectMembers(String key, String fileProperties, String user) throws IOException{
+    private void BroadcastFileToProjectMembers(String key, String fileName) throws IOException, Exception{
         Project project = FindProjectById(key);
+        File fileToSend = new File("sunucuya_gelen_dosyalar\\" + fileName);
         
         for(ClientHandler handler: clientHandlers){
             
             // Projeye bağlanmış kullanıcıları bul
             for(String connectedUser : project.connectedUsers){
                 if(handler.username.equals(connectedUser) && !handler.username.equals(this.username)){
-                    
-                    FileInputStream fin = null;
                     try {
                         
-                        Communication.SendMessage("GENERAL$FILE$" + fileProperties, out);
+                        // Kullanıcılara genelden dosya geleceği bilgisini yolluyorum.
+                        Communication.SendMessage("GENERAL$FILE$" + fileName, handler.out);
                         
-                        fin = new FileInputStream("sunucuya_gelen_dosyalar\\" + fileProperties);
-                        
-                        byte[] buffer = new byte[1024];
-                        int bytesRead;
-                        while((bytesRead = fin.read(buffer)) != 1){
-                            handler.out.write(buffer, 0, bytesRead);
-                        }
+                        Communication.SendFile(fileToSend, handler.out);
                         
                     } catch (FileNotFoundException ex) {
                         Logger.getLogger(ClientHandler.class.getName()).log(Level.SEVERE, null, ex);
-                    } finally {
-                        try {
-                            fin.close();
-                        } catch (IOException ex) {
-                            Logger.getLogger(ClientHandler.class.getName()).log(Level.SEVERE, null, ex);
-                        }
                     }
                 }
             }
 
         }
+        
+        fileToSend.delete();
     }
 }
