@@ -4,21 +4,16 @@
  */
 package com.fsm.client.gui;
 
-import java.io.BufferedReader;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
 import java.net.Socket;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 /**
  *
- * @author Yakup
+ * @author Şahan
  */
 public class RegisterPage extends javax.swing.JFrame {
 
@@ -130,36 +125,32 @@ public class RegisterPage extends javax.swing.JFrame {
     private void registerPageButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_registerPageButtonActionPerformed
         LoginPage loginPage = new LoginPage();
         loginPage.setVisible(true);
-        
+
         this.dispose();
     }//GEN-LAST:event_registerPageButtonActionPerformed
 
     private void registerButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_registerButtonActionPerformed
-        
+
         String usernameTxt = registerUsernameTxt.getText();
         String passwordTxt = registerPasswordTxt.getText();
-        
-        if(usernameTxt.equals("") || passwordTxt.equals("")){
+
+        if (usernameTxt.equals("") || passwordTxt.equals("")) {
             return;
         }
-        
+
         try {
-            Socket socket = new Socket("localhost", 9090);
-            
+            Socket socket = new Socket("13.60.98.114", 9090);
+
             DataInputStream in = new DataInputStream(socket.getInputStream());
             DataOutputStream out = new DataOutputStream(socket.getOutputStream());
-            
-            String command = "REGISTER$" + usernameTxt + "$" + passwordTxt;
-            
-            out.write(command.getBytes(StandardCharsets.UTF_8));
-            out.flush();
-            
-            byte[] messageByte = new byte[1024];
-            int bytesRead = in.read(messageByte);
-            String serverResponse = new String(messageByte, 0, bytesRead, Charset.forName("UTF-8"));
-                        
-            registerIndicatorLabel.setText(serverResponse);
-            
+
+            String command = String.format("REGISTER$%s$%s", usernameTxt, passwordTxt);
+            Communication.SendMessage(command, out);
+
+            String response = Communication.ReadMessage(in);
+
+            registerIndicatorLabel.setText(response);
+
         } catch (IOException ex) {
             Logger.getLogger(LoginPage.class.getName()).log(Level.SEVERE, null, ex);
         }

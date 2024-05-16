@@ -4,34 +4,30 @@
  */
 package com.fsm.client.gui;
 
-import java.io.BufferedReader;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
-import java.io.IOException;
-import java.io.PrintWriter;
 import java.net.Socket;
-import java.util.concurrent.TimeUnit;
 
 /**
  *
- * @author Yakup
+ * @author Şahan
  */
 public class CreateProjectPage extends javax.swing.JFrame {
-    
+
     private Socket client;
     private DataInputStream in;
     private DataOutputStream out;
     private String username;
     private MainPage mainPage;
-    
+
     /**
      * Creates new form CreateProjectPage
      */
     public CreateProjectPage() {
         initComponents();
     }
-    
-    public void initialize(MainPage mainPage, Socket socket, DataInputStream in, DataOutputStream out, String username){
+
+    public void initialize(MainPage mainPage, Socket socket, DataInputStream in, DataOutputStream out, String username) {
         this.client = socket;
         this.in = in;
         this.out = out;
@@ -97,21 +93,22 @@ public class CreateProjectPage extends javax.swing.JFrame {
     }// </editor-fold>//GEN-END:initComponents
 
     private void createProjectBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_createProjectBtnActionPerformed
-        
+
         String projectName = projectNameTxt.getText();
-        
+
         // Eğer proje adı yoksa projeyi oluşturma
-        if(projectName.equals("")){
+        if (projectName.equals("")) {
             return;
         }
-        
+
         try {
             String command = "CREATE$" + username + "$" + projectName;
-            
+
             Communication.SendMessage(command, out);
-            
+
             mainPage.getProjectData();
         } catch (Exception e) {
+            throw new RuntimeException(e);
         }
     }//GEN-LAST:event_createProjectBtnActionPerformed
 

@@ -11,21 +11,24 @@ import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class ClientHandler extends Thread{
-    
+/**
+ *
+ * @author Şahan
+ */
+public class ClientHandler extends Thread {
+
     private String username;
     private Socket client;
     private DataInputStream in;
     private DataOutputStream out;
     private Boolean isAuthenticated = false;
-    
+
     private static CopyOnWriteArrayList<Project> projects;
     private static CopyOnWriteArrayList<User> users;
     private static CopyOnWriteArrayList<ClientHandler> clientHandlers;
     private static Authenticator authenticator;
-    
-    
-    public ClientHandler(Socket socket, CopyOnWriteArrayList<User> users, Authenticator authenticator, CopyOnWriteArrayList<Project> projects, CopyOnWriteArrayList<ClientHandler> clients) throws IOException{
+
+    public ClientHandler(Socket socket, CopyOnWriteArrayList<User> users, Authenticator authenticator, CopyOnWriteArrayList<Project> projects, CopyOnWriteArrayList<ClientHandler> clients) throws IOException {
         this.client = socket;
         in = new DataInputStream(client.getInputStream());
         out = new DataOutputStream(client.getOutputStream());
@@ -35,282 +38,232 @@ public class ClientHandler extends Thread{
         this.clientHandlers = clients;
         clientHandlers.add(this);
     }
-    
-    private String getProjectsCreatedByUser(){
-        String response = "";
-        
+
+    private String getProjectsCreatedByUser() {
+        String response = "yok";
+
         for (Project project : this.projects) {
-            if(project.creator.equals(this.username)){
+            if (project.creator.equals(this.getUsername())) {
                 response += project.projectName + "*" + project.projectId + "$";
             }
         }
-        
+
         return response;
     }
-    
-    private Project FindProjectById(String id){
-        
+
+    private Project FindProjectById(String id) {
+
         Project tmp = null;
-        
-        for(Project project: projects){
-            if(project.projectId.equals(id)){
+
+        for (Project project : projects) {
+            if (project.projectId.equals(id)) {
                 return project;
             }
         }
-        
+
         return tmp;
     }
-    
+
     @Override
-    public void run(){
+    public void run() {
         try {
-            while (!client.isClosed()) {        
-                
-                while(!isAuthenticated){
-                    
-                    String req = Communication.ReadMessage(in);
-                    
-                    if(req.equals(""))
-                    {
-                        continue;
-                    }
+            while (!client.isClosed()) {
+
+                Authenticator.HandleAuthentication(this);
+
+                while (!client.isClosed()) {
+                    String req = Communication.ReadMessage(getIn());
 
                     String[] parts = req.split("\\$");
                     String cmd = parts[0];
-                    String username = parts[1];
-                    String password = parts[2];
-                    
-                    if(cmd.equals("LOGIN")){ // eğer LOGIN ise:
-                        String canLogin = authenticator.checkIfUserCanLogin(username, password);
-                        if (canLogin.equals("ok")) {
-                            this.username = username;
-                            isAuthenticated = true;
-                            Communication.SendMessage("ok", out);
-                        }
-                        
-                        else if(canLogin.equals("already-connected")){
-                            Communication.SendMessage("Kullanıcı zaten giriş yapmış.", out);
-                        }
-                        else{
-                            Communication.SendMessage("Kullanıcı adı veya şifre yanlış!", out);
-                        }
-                        
-                    }
 
-                    else if(cmd.equals("REGISTER")){ // eğer REGISTER ise:
-                        Boolean canRegister = authenticator.checkIfUserCanRegister(username, password);
-                        if (canRegister) {
-                            authenticator.RegisterUser(username, password);
-                            Communication.SendMessage("Kaydedildin!", out);
-                        }
-                        else{
-                            Communication.SendMessage("Kullanıcı adı alınmış.", out);
-                        }
-                    }
-                }
-                
-                while(!client.isClosed()){
-                    String req = Communication.ReadMessage(in);
-
-                    String[] parts = req.split("\\$");
-                    String cmd = parts[0];
-                    
-                    if(req == null){
+                    if (req == null) {
                         continue;
                     }
-                    
-                    parts = req.split("\\$");
-                    cmd = parts[0];
-                    
-                    if(cmd.equals("PROJECTS")){
-                        Communication.SendMessage(getProjectsCreatedByUser(), out);
-                    }
-                    
-                    else if(cmd.equals("CREATE")){
+
+                    if (cmd.equals("PROJECTS")) {
+                        Communication.SendMessage(getProjectsCreatedByUser(), getOut());
+                    } else if (cmd.equals("CREATE")) {
                         String author = parts[1];
                         String projectName = parts[2];
-                        
+
                         Project created = new Project(author, projectName);
-                        
+
                         projects.add(created);
-                    }
-                    
-                    else if(cmd.equals("CONNECT")){
-                        // CONNECT$KULLANICIADI$PROJEID
-                        
-                        String user = parts[1];
-                        String id = parts[2];
-                        
-                        Project project = FindProjectById(id);
-                        project.addConnectedUserToProject(user);
-                        
-                        SendProjectKey(project);
+                    } else if (cmd.equals("CONNECT")) {
+                        // CONNECT$ANAHTAR
+
+                        String key = parts[1];
+
+                        Project project = FindProjectById(key);
+                        project.addConnectedUserToProject(getUsername());
+
                         BroadcastConnectedUsers(project);
-                    }
-                    
-                    else if(cmd.equals("USERS")){
-                        String pId = parts[1];
-                        
-                        Project project = FindProjectById(pId);
-                        
-                        if(project == null){
-                            continue;
-                        }
-                        
-                        String messageToSend = "USERS$" + project.getConnectedUsers();
-                        Communication.SendMessage(messageToSend, out);
-                    }
-                    
-                    else if(cmd.equals("GENERAL")){
-                        //GENERAL$PROJECTKEY$MESSAGE$MESSAGE_DATA
-                        
-                        //GENERAL$PROJECTKEY$FILE${DOSYA ADI VE UZANTISI}
-                        
+
+                        //BroadcastToProjectMembers(key, "adlı kullanıcı sohbete katıldı!");
+                    } else if (cmd.equals("GENERAL")) {
+
                         String key = parts[1];
                         String type = parts[2];
-                        
-                        if(type.equals("MESSAGE")){
+
+                        //GENERAL${ANAHTAR}$MESSAGE${MESAJIN KENDİSİ}
+                        if (type.equals("MESSAGE")) {
                             String message = parts[3];
-                            BroadcastToProjectMembers(key, message, this.username);
-                        }
-                        else if(type.equals("FILE")){
+                            BroadcastToProjectMembers(key, message);
+                        } //GENERAL${ANAHTAR}$FILE${DOSYA ADI}
+                        else if (type.equals("FILE")) {
                             String fileName = parts[3];
-                            
-                            Communication.ReceiveFile("sunucuya_gelen_dosyalar\\" + fileName, this.in);
-                            
+
+                            Communication.ReceiveFile("sunucuya_gelen_dosyalar\\" + fileName, this.getIn());
+
                             String report = String.format("********\n"
                                     + "Sunucuya dosya geldi!\n"
                                     + "Proje Anahtarı: %s\n"
                                     + "Gönderen: %s\n"
-                                    + "Kaydedilen konum: sunucuya_gelen_dosyalar/%s", 
-                                key, this.username, fileName);
-        
+                                    + "Kaydedilen konum: sunucuya_gelen_dosyalar/%s",
+                                    key, this.getUsername(), fileName);
+
                             System.out.println(report);
-                            
+
                             BroadcastFileToProjectMembers(key, fileName);
+
+                            BroadcastToProjectMembers(key, fileName + "adlı dosyayı gönderdi!");
                         }
-                        
-                        
-                    }
-                    
-                    else if(cmd.equals("DISCONNECT")){
+
+                    } else if (cmd.equals("DISCONNECT")) {
                         // DISCONNECT$PROJECTID
-                        
-                        String projectKey = parts[1];
-                        
-                        DisconnectUserFromProject(projectKey);
-                    }
-                    
-                    else if(cmd.equals("EXIT")){
+
+                        String key = parts[1];
+
+                        DisconnectUserFromProject(key);
+
+                        BroadcastDisconnectedUser(FindProjectById(key), username);
+                        //BroadcastToProjectMembers(key, "adlı kullanıcı projeden ayrıldı");
+                    } else if (cmd.equals("EXIT")) {
                         for (User user : users) {
-                            if(this.username.equals(user.username)){
+                            if (this.getUsername().equals(user.username)) {
                                 user.setConnectedStatus(false);
                             }
                         }
                         CloseEverything();
                     }
-                    
+
                 }
             }
         } catch (Exception e) {
-            CloseEverything();
+            interrupt();
         }
     }
-    
-    
-    
-    private void RemoveClientHandler(){
+
+    private void RemoveClientHandler() {
         clientHandlers.remove(this);
     }
-    
-    private void CloseEverything(){
+
+    private void CloseEverything() {
         RemoveClientHandler();
-        try{
-            
-            if(in != null){
-                in.close();
+        try {
+
+            if (getIn() != null) {
+                getIn().close();
             }
-            
-            if(out != null){
-                out.close();
+
+            if (getOut() != null) {
+                getOut().close();
             }
-            
-            if(client != null){
+
+            if (client != null) {
                 client.close();
             }
-            
-        }catch(IOException e){
-            e.printStackTrace();
+
+            this.interrupt();
+
+        } catch (IOException e) {
+            throw new RuntimeException(e);
         }
     }
-    
-    private void DisconnectUserFromProject(String key){
-        for(Project project : projects){
-            if(project.projectId.equals(key)){
-                project.connectedUsers.remove(username);
+
+    private void DisconnectUserFromProject(String key) {
+        for (Project project : projects) {
+            if (project.projectId.equals(key)) {
+                project.connectedUsers.remove(getUsername());
             }
         }
-        
-        BroadcastConnectedUsers(FindProjectById(key));
+
+        BroadcastDisconnectedUser(FindProjectById(key), username);
     }
-    
-    private void SendProjectKey(Project project){
-        if(this.username.equals(project.creator)){
-            Communication.SendMessage("KEY$"+project.projectId, out);
-        }
-        else{
-            Communication.SendMessage("KEY$"+"<Proje sahibi olmadığınız için Key'i göremezsiniz.>", out);
-        }
-    }
-    
-    private void BroadcastConnectedUsers(Project project){
+
+    private void BroadcastConnectedUsers(Project project) {
         // Bütün client handlerlar arasında:
-        for(ClientHandler handler: clientHandlers){
-            
+        for (ClientHandler handler : clientHandlers) {
+
             // Projeye bağlanmış kullanıcıları bul
-            for(String connectedUser : project.connectedUsers){
-                if(handler.username == null){
+            for (String connectedUser : project.connectedUsers) {
+                if (handler.getUsername() == null) {
                     continue;
-                }
-                else if(handler.username.equals(connectedUser)){
-                    Communication.SendMessage("USERS$" + project.getConnectedUsers(), handler.out);
+                } else if (handler.getUsername().equals(connectedUser)) {
+                    String response = String.format("NEW-USER-CONNECTED$%s", project.getConnectedUsers());
+                    Communication.SendMessage(response, handler.getOut());
                 }
             }
 
         }
     }
-    
-    private void BroadcastToProjectMembers(String key, String msg, String user){
-        Project project = FindProjectById(key);
-        
-        for(ClientHandler handler: clientHandlers){
-            
+
+    private void BroadcastDisconnectedUser(Project project, String disconnectedUsername) {
+
+        // Bütün client handlerlar arasında:
+        for (ClientHandler handler : clientHandlers) {
+
             // Projeye bağlanmış kullanıcıları bul
-            for(String connectedUser : project.connectedUsers){
-                if(handler.username.equals(connectedUser)){
-                    Communication.SendMessage("GENERAL$" + user + ": " + msg, handler.out);
+            for (String connectedUser : project.connectedUsers) {
+                if (handler.getUsername() == null) {
+                    continue;
+                } else if (handler.getUsername().equals(connectedUser)) {
+
+                    String response = String.format("USER-DISCONNECTED$%s$%s",
+                            disconnectedUsername, project.getConnectedUsers());
+
+                    Communication.SendMessage(response, handler.getOut());
                 }
             }
 
         }
     }
-    
-    private void BroadcastFileToProjectMembers(String key, String fileName) throws IOException, Exception{
+
+    private void BroadcastToProjectMembers(String key, String msg) {
+
+        //GENERAL$PROJECTKEY$MESSAGE$MESSAGE_DATA
+        Project project = FindProjectById(key);
+
+        for (ClientHandler handler : clientHandlers) {
+
+            // Projeye bağlanmış kullanıcıları bul
+            for (String connectedUser : project.connectedUsers) {
+                if (handler.getUsername().equals(connectedUser)) {
+                    String toSend = String.format("GENERAL$MESSAGE$%s: %s", getUsername(), msg);
+                    Communication.SendMessage(toSend, handler.getOut());
+                }
+            }
+
+        }
+    }
+
+    private void BroadcastFileToProjectMembers(String key, String fileName) throws IOException, Exception {
         Project project = FindProjectById(key);
         File fileToSend = new File("sunucuya_gelen_dosyalar\\" + fileName);
-        
-        for(ClientHandler handler: clientHandlers){
-            
+
+        for (ClientHandler handler : clientHandlers) {
+
             // Projeye bağlanmış kullanıcıları bul
-            for(String connectedUser : project.connectedUsers){
-                if(handler.username.equals(connectedUser) && !handler.username.equals(this.username)){
+            for (String connectedUser : project.connectedUsers) {
+                if (handler.getUsername().equals(connectedUser) && !handler.username.equals(this.username)) {
                     try {
-                        
+
                         // Kullanıcılara genelden dosya geleceği bilgisini yolluyorum.
-                        Communication.SendMessage("GENERAL$FILE$" + fileName, handler.out);
-                        
-                        Communication.SendFile(fileToSend, handler.out);
-                        
+                        Communication.SendMessage("GENERAL$FILE$" + fileName, handler.getOut());
+
+                        Communication.SendFile(fileToSend, handler.getOut());
+
                     } catch (FileNotFoundException ex) {
                         Logger.getLogger(ClientHandler.class.getName()).log(Level.SEVERE, null, ex);
                     }
@@ -318,7 +271,39 @@ public class ClientHandler extends Thread{
             }
 
         }
-        
+
         fileToSend.delete();
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public DataInputStream getIn() {
+        return in;
+    }
+
+    public void setIn(DataInputStream in) {
+        this.in = in;
+    }
+
+    public DataOutputStream getOut() {
+        return out;
+    }
+
+    public void setOut(DataOutputStream out) {
+        this.out = out;
+    }
+
+    public Boolean getIsAuthenticated() {
+        return isAuthenticated;
+    }
+
+    public void setIsAuthenticated(Boolean isAuthenticated) {
+        this.isAuthenticated = isAuthenticated;
     }
 }

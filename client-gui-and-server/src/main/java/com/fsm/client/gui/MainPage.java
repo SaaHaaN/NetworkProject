@@ -1,40 +1,32 @@
-/*
- * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
- * Click nbfs://nbhost/SystemFileSystem/Templates/GUIForms/JFrame.java to edit this template
- */
 package com.fsm.client.gui;
 
-import java.io.BufferedReader;
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
-import java.io.PrintWriter;
 import java.net.Socket;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import javax.swing.DefaultListModel;
-import javax.swing.ImageIcon;
-import javax.swing.JLabel;
-import javax.swing.JList;
-import javax.swing.ListModel;
+import javax.swing.JOptionPane;
 
 /**
  *
- * @author Yakup
+ * @author Şahan
  */
 public class MainPage extends javax.swing.JFrame {
+
     private Socket client;
     private DataInputStream in;
     private DataOutputStream out;
     private String username;
+
     /**
      * Creates new form MainPage
      */
-    public MainPage(){
+    public MainPage() {
         initComponents();
+        setDefaultCloseOperation(MainPage.DO_NOTHING_ON_CLOSE);
     }
-    
-    public void initialize(Socket socket, DataInputStream in, DataOutputStream out, String username){
+
+    public void initialize(Socket socket, DataInputStream in, DataOutputStream out, String username) {
         this.client = socket;
         this.in = in;
         this.out = out;
@@ -42,30 +34,32 @@ public class MainPage extends javax.swing.JFrame {
         usernameLabel.setText("Kullanıcı: " + username);
         getProjectData();
     }
-    
-    public void getProjectData(){
+
+    public void getProjectData() {
         try {
             Communication.SendMessage("PROJECTS$", out);
             String serverResponse = Communication.ReadMessage(in);
-            
-            if(serverResponse.equals("")){
+
+            if (serverResponse.equals("yok")) {
                 return;
             }
-            
-            System.out.println(serverResponse);
-            String[] projectsSplitted = serverResponse.split("\\$");
-            
-            DefaultListModel<String> listModel = new DefaultListModel<>(); 
-           
+
+            String actualResponse = serverResponse.substring(3);
+            String[] projectsSplitted = actualResponse.split("\\$");
+
+            DefaultListModel<String> listModel = new DefaultListModel<>();
+
             for (String singleProject : projectsSplitted) {
-                String[] partsAgain = singleProject.split("\\*"); 
-                listModel.addElement(partsAgain[0]);
+                String[] partsAgain = singleProject.split("\\*");
+                String toShow = String.format("%s | %s", partsAgain[0], partsAgain[1]);
+                listModel.addElement(toShow);
             }
-            
+
             projectsList.setModel(listModel);
-            
+
         } catch (Exception e) {
-        }   
+            throw new RuntimeException(e);
+        }
     }
 
     /**
@@ -79,12 +73,12 @@ public class MainPage extends javax.swing.JFrame {
 
         usernameLabel = new javax.swing.JLabel();
         myProjectsLabel = new javax.swing.JLabel();
-        otherProjectsLabel = new javax.swing.JLabel();
         createProjectBtn = new javax.swing.JButton();
         joinProjectBtn = new javax.swing.JButton();
         exitBtn = new javax.swing.JButton();
         jScrollPane1 = new javax.swing.JScrollPane();
         projectsList = new javax.swing.JList<>();
+        projectKeyTxt = new javax.swing.JTextField();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         addWindowListener(new java.awt.event.WindowAdapter() {
@@ -95,13 +89,10 @@ public class MainPage extends javax.swing.JFrame {
 
         usernameLabel.setFont(new java.awt.Font("Dialog", 0, 14)); // NOI18N
         usernameLabel.setHorizontalAlignment(javax.swing.SwingConstants.CENTER);
-        usernameLabel.setText("Dummy Data");
+        usernameLabel.setText("Kullanıcı: <>");
 
         myProjectsLabel.setFont(new java.awt.Font("Dialog", 0, 14)); // NOI18N
         myProjectsLabel.setText("Projelerim:");
-
-        otherProjectsLabel.setFont(new java.awt.Font("Dialog", 0, 14)); // NOI18N
-        otherProjectsLabel.setText("Katıldığım Projeler:");
 
         createProjectBtn.setText("Proje Oluştur");
         createProjectBtn.setToolTipText("");
@@ -128,35 +119,39 @@ public class MainPage extends javax.swing.JFrame {
 
         jScrollPane1.setViewportView(projectsList);
 
+        projectKeyTxt.setHorizontalAlignment(javax.swing.JTextField.CENTER);
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
             .addGroup(layout.createSequentialGroup()
                 .addContainerGap()
-                .addComponent(usernameLabel, javax.swing.GroupLayout.DEFAULT_SIZE, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
-                .addContainerGap())
-            .addGroup(layout.createSequentialGroup()
-                .addGap(24, 24, 24)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(layout.createSequentialGroup()
-                        .addComponent(myProjectsLabel)
-                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 187, Short.MAX_VALUE)
-                        .addComponent(otherProjectsLabel)
-                        .addGap(76, 76, 76))
-                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                        .addGap(0, 0, Short.MAX_VALUE)
-                        .addComponent(exitBtn)
-                        .addContainerGap())
+                        .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 209, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE)
+                                .addComponent(projectKeyTxt, javax.swing.GroupLayout.PREFERRED_SIZE, 154, javax.swing.GroupLayout.PREFERRED_SIZE)
+                                .addGap(22, 22, 22))
+                            .addGroup(layout.createSequentialGroup()
+                                .addGap(56, 56, 56)
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.TRAILING)
+                                    .addComponent(exitBtn)
+                                    .addComponent(joinProjectBtn))
+                                .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))))
                     .addGroup(layout.createSequentialGroup()
                         .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-                            .addGroup(layout.createSequentialGroup()
-                                .addGap(63, 63, 63)
-                                .addComponent(createProjectBtn)
-                                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                                .addComponent(joinProjectBtn))
-                            .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 209, javax.swing.GroupLayout.PREFERRED_SIZE))
-                        .addGap(0, 0, Short.MAX_VALUE))))
+                            .addComponent(usernameLabel, javax.swing.GroupLayout.DEFAULT_SIZE, 402, Short.MAX_VALUE)
+                            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                                    .addComponent(myProjectsLabel)
+                                    .addGroup(layout.createSequentialGroup()
+                                        .addGap(63, 63, 63)
+                                        .addComponent(createProjectBtn)))
+                                .addGap(0, 0, Short.MAX_VALUE)))
+                        .addContainerGap())))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -164,17 +159,19 @@ public class MainPage extends javax.swing.JFrame {
                 .addContainerGap()
                 .addComponent(usernameLabel)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
-                    .addComponent(myProjectsLabel)
-                    .addComponent(otherProjectsLabel))
+                .addComponent(myProjectsLabel)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED)
-                .addComponent(jScrollPane1, javax.swing.GroupLayout.DEFAULT_SIZE, 212, Short.MAX_VALUE)
-                .addGap(18, 18, 18)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addComponent(jScrollPane1, javax.swing.GroupLayout.PREFERRED_SIZE, 208, javax.swing.GroupLayout.PREFERRED_SIZE)
+                    .addGroup(layout.createSequentialGroup()
+                        .addComponent(projectKeyTxt, javax.swing.GroupLayout.PREFERRED_SIZE, 25, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
+                        .addComponent(joinProjectBtn)))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.BASELINE)
                     .addComponent(createProjectBtn)
-                    .addComponent(joinProjectBtn)
                     .addComponent(exitBtn))
-                .addGap(27, 27, 27))
+                .addContainerGap(24, Short.MAX_VALUE))
         );
 
         usernameLabel.getAccessibleContext().setAccessibleName("usernameLabel");
@@ -188,49 +185,57 @@ public class MainPage extends javax.swing.JFrame {
         RouteToLoginPage();
     }//GEN-LAST:event_exitBtnActionPerformed
 
-    private void DisconnectUser(){
+    private void DisconnectUser() {
         try {
             Communication.SendMessage("EXIT$", out);
-            
-            if(in != null){
+
+            if (in != null) {
                 in.close();
             }
-            
-            if(out != null){
+
+            if (out != null) {
                 out.close();
             }
-            
-            if(client != null){
+
+            if (client != null) {
                 client.close();
             }
-            
-        } catch(IOException err){
+
+        } catch (IOException err) {
         }
     }
-    
-    private void RouteToLoginPage(){      
+
+    private void RouteToLoginPage() {
         LoginPage loginPage = new LoginPage();
         loginPage.setVisible(true);
-                
+
         this.dispose();
     }
-    
     private void formWindowClosing(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_formWindowClosing
         DisconnectUser();
     }//GEN-LAST:event_formWindowClosing
 
     private void joinProjectBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_joinProjectBtnActionPerformed
-        String messageToSend = "CONNECT$" + username + "$A"; // TO DO: Değişecek
+        String key = projectKeyTxt.getText().trim(); // Girdinin başındaki ve sonundaki boşlukları temizle
+
+        if (key.isEmpty()) {  // Eğer key boşsa
+            // JList'teki seçili öğeyi al
+            Object selectedValue = projectsList.getSelectedValue();
+            if (selectedValue != null) {
+                key = selectedValue.toString(); // Seçili öğeyi key olarak kullan
+            } else {
+                // JList'te seçili öğe yoksa uyarı göster
+                JOptionPane.showMessageDialog(this, "Lütfen bir proje seçin veya proje anahtarını girin.");
+                return; // İşleme devam etmeyi engelle
+            }
+        }
+
+        String messageToSend = String.format("CONNECT$%s", key);
         Communication.SendMessage(messageToSend, out);
-        String res = Communication.ReadMessage(in);
-        
-        String[] parts = res.split("\\$");
-        
-        String key = parts[1];
-        
         ProjectPage projectPage = new ProjectPage();
         projectPage.initialize(key, username, in, out);
         projectPage.setVisible(true);
+
     }//GEN-LAST:event_joinProjectBtnActionPerformed
 
     private void createProjectBtnActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_createProjectBtnActionPerformed
@@ -281,7 +286,7 @@ public class MainPage extends javax.swing.JFrame {
     private javax.swing.JScrollPane jScrollPane1;
     private javax.swing.JButton joinProjectBtn;
     private javax.swing.JLabel myProjectsLabel;
-    private javax.swing.JLabel otherProjectsLabel;
+    private javax.swing.JTextField projectKeyTxt;
     private javax.swing.JList<String> projectsList;
     private javax.swing.JLabel usernameLabel;
     // End of variables declaration//GEN-END:variables

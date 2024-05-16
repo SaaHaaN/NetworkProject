@@ -5,6 +5,8 @@ com\fsm\client\gui\MainPage.class
 com\fsm\client\gui\RegisterPage$2.class
 com\fsm\client\gui\MainPage$1.class
 com\fsm\client\gui\LoginPage$2.class
+com\fsm\client\gui\ProjectPage$8.class
+com\fsm\client\gui\ProjectPage$7.class
 com\fsm\client\gui\CreateProjectPage$2.class
 com\fsm\client\gui\ProjectPage$5.class
 com\fsm\client\gui\ProjectThread.class
@@ -22,7 +24,9 @@ com\fsm\client\gui\ProjectPage.class
 com\fsm\client\gui\ProjectPage$4.class
 com\fsm\client\gui\MainPage$2.class
 com\fsm\server\Authenticator.class
+com\fsm\client\gui\ProjectPageUtils.class
 com\fsm\client\gui\ProjectPage$6.class
+com\fsm\client\gui\LoginPage$4.class
 com\fsm\client\gui\LoginPage.class
 com\fsm\client\gui\RegisterPage$3.class
 com\fsm\client\gui\MainPage$5.class

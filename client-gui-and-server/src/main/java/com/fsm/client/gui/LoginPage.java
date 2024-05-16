@@ -4,15 +4,17 @@ import java.io.DataInputStream;
 import java.io.DataOutputStream;
 import java.io.IOException;
 import java.net.Socket;
-import java.nio.charset.Charset;
-import java.nio.charset.StandardCharsets;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
+/**
+ *
+ * @author Şahan
+ */
 public class LoginPage extends javax.swing.JFrame {
 
     /**
-     * Creates new form GreetingForm
+     * Creates new form LoginPage
      */
     public LoginPage() {
         initComponents();
@@ -34,6 +36,7 @@ public class LoginPage extends javax.swing.JFrame {
         loginButton = new javax.swing.JButton();
         registerPageButton = new javax.swing.JButton();
         loginIndicatorLabel = new javax.swing.JLabel();
+        closeButton = new javax.swing.JButton();
 
         setDefaultCloseOperation(javax.swing.WindowConstants.EXIT_ON_CLOSE);
         setTitle("Giriş Ekranı");
@@ -65,14 +68,17 @@ public class LoginPage extends javax.swing.JFrame {
         loginIndicatorLabel.setFont(new java.awt.Font("Dialog", 0, 14)); // NOI18N
         loginIndicatorLabel.setText("Giriş Yapma Sayfası");
 
+        closeButton.setText("Kapat");
+        closeButton.addActionListener(new java.awt.event.ActionListener() {
+            public void actionPerformed(java.awt.event.ActionEvent evt) {
+                closeButtonActionPerformed(evt);
+            }
+        });
+
         javax.swing.GroupLayout layout = new javax.swing.GroupLayout(getContentPane());
         getContentPane().setLayout(layout);
         layout.setHorizontalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
-            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
-                .addGap(0, 114, Short.MAX_VALUE)
-                .addComponent(registerPageButton, javax.swing.GroupLayout.PREFERRED_SIZE, 177, javax.swing.GroupLayout.PREFERRED_SIZE)
-                .addGap(109, 109, 109))
             .addGroup(layout.createSequentialGroup()
                 .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
                     .addGroup(layout.createSequentialGroup()
@@ -91,6 +97,15 @@ public class LoginPage extends javax.swing.JFrame {
                                     .addComponent(loginUsernameTxt)
                                     .addComponent(loginPasswordTxt, javax.swing.GroupLayout.PREFERRED_SIZE, 106, javax.swing.GroupLayout.PREFERRED_SIZE))))))
                 .addContainerGap(javax.swing.GroupLayout.DEFAULT_SIZE, Short.MAX_VALUE))
+            .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                .addGap(0, 114, Short.MAX_VALUE)
+                .addGroup(layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                        .addComponent(registerPageButton, javax.swing.GroupLayout.PREFERRED_SIZE, 177, javax.swing.GroupLayout.PREFERRED_SIZE)
+                        .addGap(109, 109, 109))
+                    .addGroup(javax.swing.GroupLayout.Alignment.TRAILING, layout.createSequentialGroup()
+                        .addComponent(closeButton)
+                        .addContainerGap())))
         );
         layout.setVerticalGroup(
             layout.createParallelGroup(javax.swing.GroupLayout.Alignment.LEADING)
@@ -109,7 +124,9 @@ public class LoginPage extends javax.swing.JFrame {
                 .addComponent(loginButton)
                 .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.UNRELATED)
                 .addComponent(registerPageButton)
-                .addContainerGap(71, Short.MAX_VALUE))
+                .addPreferredGap(javax.swing.LayoutStyle.ComponentPlacement.RELATED, 42, Short.MAX_VALUE)
+                .addComponent(closeButton)
+                .addContainerGap())
         );
 
         pack();
@@ -119,54 +136,51 @@ public class LoginPage extends javax.swing.JFrame {
     private void registerPageButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_registerPageButtonActionPerformed
         RegisterPage registerPage = new RegisterPage();
         registerPage.setVisible(true);
-        
+
         this.dispose();
     }//GEN-LAST:event_registerPageButtonActionPerformed
 
     private void loginButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_loginButtonActionPerformed
-        
+
         String usernameTxt = loginUsernameTxt.getText();
         String passwordTxt = loginPasswordTxt.getText();
-        
-        if(usernameTxt.equals("") || passwordTxt.equals("")){
+
+        if (usernameTxt.equals("") || passwordTxt.equals("")) {
             return;
         }
-        
+
         try {
-            Socket socket = new Socket("localhost", 9090);
-            
+            Socket socket = new Socket("13.60.98.114", 9090);
+
             DataInputStream in = new DataInputStream(socket.getInputStream());
             DataOutputStream out = new DataOutputStream(socket.getOutputStream());
-            
-            String command = "LOGIN$" + usernameTxt + "$" + passwordTxt;
-            
-            out.write(command.getBytes(StandardCharsets.UTF_8));
-            out.flush();
-            
-            byte[] messageByte = new byte[1024];
-            int bytesRead = in.read(messageByte); 
-            String serverResponse = new String(messageByte, 0, bytesRead, Charset.forName("UTF-8"));
-            
-            if(serverResponse.equals("ok"))
-            {
+
+            String command = String.format("LOGIN$%s$%s", usernameTxt, passwordTxt);
+            Communication.SendMessage(command, out);
+
+            String response = Communication.ReadMessage(in);
+
+            if (response.equals("ok")) {
                 MainPage mainPage = new MainPage();
                 mainPage.initialize(socket, in, out, usernameTxt);
                 mainPage.setVisible(true);
-                
+
                 this.dispose();
-            }
-            else{
-                loginIndicatorLabel.setText(serverResponse);
+            } else {
+                loginIndicatorLabel.setText(response);
                 socket.close();
             }
-            
-        
-            
+
         } catch (IOException ex) {
             Logger.getLogger(LoginPage.class.getName()).log(Level.SEVERE, null, ex);
         }
-        
+
     }//GEN-LAST:event_loginButtonActionPerformed
+
+    private void closeButtonActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_closeButtonActionPerformed
+        // TODO add your handling code here:
+        this.dispose();
+    }//GEN-LAST:event_closeButtonActionPerformed
 
     /**
      * @param args the command line arguments
@@ -205,6 +219,7 @@ public class LoginPage extends javax.swing.JFrame {
     }
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
+    private javax.swing.JButton closeButton;
     private javax.swing.JButton loginButton;
     private javax.swing.JLabel loginIndicatorLabel;
     private javax.swing.JLabel loginPasswordLabel;

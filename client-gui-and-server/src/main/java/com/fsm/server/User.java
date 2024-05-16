@@ -6,28 +6,33 @@ package com.fsm.server;
 
 import java.util.ArrayList;
 
+/**
+ *
+ * @author Şahan
+ */
 public class User {
+
     public String username;
     public String password;
-    
+
     public ArrayList<Project> projects = new ArrayList<>();
-    
+
     private Boolean isConnected = false;
-    
-    public User(String username, String password){
+
+    public User(String username, String password) {
         this.username = username;
         this.password = password;
     }
-    
-    public Boolean getConnectedStatus(){
+
+    public Boolean getConnectedStatus() {
         return this.isConnected;
     }
-    
-    public void setConnectedStatus(Boolean value){
+
+    public void setConnectedStatus(Boolean value) {
         this.isConnected = value;
     }
-    
-    public void addProjectToUser(Project project){
+
+    public void addProjectToUser(Project project) {
         this.projects.add(project);
     }
 }
